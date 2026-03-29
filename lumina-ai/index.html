@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina Ai</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0b0d11; color: #e2e8f0; overflow: hidden; }
+        .chat-area { height: calc(100vh - 140px); scroll-behavior: smooth; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        
+        .scan-line {
+            width: 100%; height: 3px; background: #06b6d4;
+            position: absolute; top: 0; left: 0;
+            box-shadow: 0 0 15px #06b6d4;
+            animation: scan 2.5s linear infinite;
+        }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+
+        .bubble-ai { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .bubble-user { background: rgba(6, 182, 212, 0.2); border: 1px solid rgba(6, 182, 212, 0.3); }
+        
+        /* Animasi Muncul Tombol */
+        .btn-download { opacity: 0; transform: translateY(10px); transition: all 0.3s ease; }
+        .group:hover .btn-download { opacity: 1; transform: translateY(0); }
+
+        /* Blur background saat modal muncul */
+        #mainContent.blur-sm { filter: blur(8px); pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <!-- MODAL NICKNAME -->
+    <div id="nicknameModal" class="fixed inset-0 z-[100] bg-[#0b0d11]/95 flex items-center justify-center p-6 backdrop-blur-md">
+        <div class="max-w-md w-full bg-[#161b22] border border-white/10 p-8 rounded-3xl shadow-2xl text-center transform transition-all">
+            <div class="w-16 h-16 bg-cyan-500 rounded-2xl shadow-[0_0_30px_rgba(6,182,212,0.4)] flex items-center justify-center font-bold text-black text-2xl mx-auto mb-6">G</div>
+            <h2 class="text-2xl font-bold mb-2">Halo, Selamat Datang!</h2>
+            <p class="text-slate-400 text-sm mb-8">Masukkan nickname kamu untuk mulai ngobrol dengan Lumina AI.</p>
+            
+            <input type="text" id="nickInput" placeholder="Ketik namamu..." 
+                class="w-full bg-slate-900 border border-white/10 rounded-xl p-4 mb-4 focus:outline-none focus:border-cyan-500 transition-all text-center text-white">
+            
+            <button onclick="setNickname()" 
+                class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-4 rounded-xl transition-all active:scale-95">
+                Masuk ke Chat
+            </button>
+        </div>
+    </div>
+
+    <div id="mainContent" class="blur-sm transition-all duration-500">
+        <!-- Navbar -->
+        <nav class="fixed top-0 w-full z-50 bg-[#0b0d11]/90 backdrop-blur-xl border-b border-white/5 p-4 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <!-- Ikon Navbar diganti foto profil lo juga biar sinkron -->
+                <img src="https://i.postimg.cc/VsRsGwjx/20260327-202502-removebg-preview.png" class="w-8 h-8 rounded-lg shadow-[0_0_20px_rgba(6,182,212,0.4)] object-cover">
+                <h1 class="font-bold tracking-tight text-lg">LUMINA <span class="text-cyan-400 text-sm italic">AI</span></h1>
+            </div>
+            <div id="userDisplay" class="text-[10px] bg-slate-800 px-3 py-1 rounded-full border border-white/10 text-slate-400 font-medium">Guest</div>
+        </nav>
+
+        <!-- Chat Box -->
+        <div id="chatBox" class="chat-area hide-scroll overflow-y-auto pt-24 pb-32 px-4 md:px-32 lg:px-80 flex flex-col gap-6">
+            <!-- Chat Sambutan Awal -->
+            <div class="flex gap-4 self-start max-w-[85%]">
+                <img src="https://i.postimg.cc/VsRsGwjx/20260327-202502-removebg-preview.png" class="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-cyan-500/20 shadow-lg">
+                <div class="self-start bubble-ai p-4 rounded-2xl rounded-tl-none shadow-2xl">
+                    <p class="text-sm">hello aku lumina AI dan aku siap membantu mu.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Sebelum Kirim -->
+        <div id="previewContainer" class="hidden fixed bottom-28 left-1/2 -translate-x-1/2 w-72 z-50">
+            <div class="bg-slate-900 border-2 border-cyan-500/50 p-2 rounded-2xl flex items-center gap-3 shadow-2xl backdrop-blur-md">
+                <img id="imgPrev" class="w-12 h-12 rounded-lg object-cover">
+                <div class="flex flex-col">
+                    <span class="text-[10px] font-bold text-cyan-400">SIAP EDIT</span>
+                    <span class="text-[9px] text-slate-500 italic">Klik  untuk proses</span>
+                </div>
+                <button onclick="cancelImg()" class="ml-auto bg-red-500/20 text-red-500 p-2 rounded-lg hover:bg-red-500 hover:text-white transition-all text-xs"></button>
+            </div>
+        </div>
+
+        <!-- Input Bar -->
+        <div class="fixed bottom-0 w-full bg-gradient-to-t from-[#0b0d11] p-6 z-40">
+            <div class="max-w-4xl mx-auto flex items-center gap-2 bg-[#161b22]/90 backdrop-blur-md border border-white/10 p-2 rounded-3xl shadow-2xl focus-within:border-cyan-500/50">
+                <label class="p-3 cursor-pointer hover:bg-slate-800 rounded-2xl transition">
+                    <span class="text-xl"></span>
+                    <input type="file" id="fInput" class="hidden" onchange="showPrev()" accept="image/*">
+                </label>
+                <input type="text" id="tInput" placeholder="Ketik perintah edit foto..." class="flex-1 bg-transparent border-none focus:outline-none p-2 text-sm">
+                <button onclick="gasKirim()" id="btn" class="bg-cyan-600 hover:bg-cyan-500 text-white p-3 rounded-2xl transition-all active:scale-90 flex items-center justify-center">
+                    
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const G_KEY = "AIzaSyCXmMArgPrzfhe3DBKp1E0ABX5jRrgbcnM"; 
+        const C_NAME = "dnbrnq8miq"; 
+        const C_PRESET = "ml_default"; 
+        
+        // --- TAMBAHAN PASSWORD ---
+const passBenar = "1381938384748298429849374928492849274927491749274927492749274917391749275928592849284937585729184859391837592749"; // Ganti sesuka lo
+const inputUser = prompt("Masukkan Password Access:");
+
+if (inputUser !== passBenar) {
+    alert("Password Salah! Akses ditolak.");
+    document.body.innerHTML = "<h1 style='color:white; text-align:center; margin-top:50px;'>Akses Ditolak </h1>";
+    window.stop(); 
+}
+// --- SELESAI TAMBAHAN ---
+
+        // Link Foto AI
+        const FOTO_PROFIL_AI = "https://i.postimg.cc/VsRsGwjx/20260327-202502-removebg-preview.png";
+
+        let curFile = null;
+        let userNickname = "";
+
+        // Fungsi Set Nickname
+        function setNickname() {
+            const input = document.getElementById('nickInput');
+            const name = input.value.trim();
+            
+            if (name.length < 2) {
+                alert("Nickname minimal 2 karakter!");
+                return;
+            }
+
+            userNickname = name;
+            document.getElementById('userDisplay').textContent = "User: " + userNickname;
+            document.getElementById('nicknameModal').classList.add('hidden');
+            document.getElementById('mainContent').classList.remove('blur-sm');
+            
+            // Tambah sambutan otomatis
+            setTimeout(() => {
+                createBubble(false, `Selamat datang, <b>${userNickname}</b>! Ada yang bisa aku bantu hari ini?`);
+            }, 500);
+        }
+
+        // Jalankan Enter di Nickname Input
+        document.getElementById('nickInput').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') setNickname();
+        });
+
+        function showPrev() {
+            curFile = document.getElementById('fInput').files[0];
+            if(curFile) {
+                document.getElementById('imgPrev').src = URL.createObjectURL(curFile);
+                document.getElementById('previewContainer').classList.remove('hidden');
+            }
+        }
+
+        function cancelImg() {
+            curFile = null;
+            document.getElementById('fInput').value = "";
+            document.getElementById('previewContainer').classList.add('hidden');
+        }
+
+        function createBubble(isUser, content = "") {
+            const box = document.getElementById('chatBox');
+            const wrap = document.createElement('div');
+            wrap.className = isUser ? "self-end max-w-[85%] flex flex-col items-end" : "flex gap-4 self-start max-w-[85%]";
+            
+            if (isUser) {
+                wrap.innerHTML = `
+                    <span class="text-[10px] text-cyan-500 mb-1 mr-2 font-bold uppercase tracking-widest">${userNickname}</span>
+                    <div class="bubble-user p-4 rounded-2xl rounded-tr-none text-sm shadow-lg">${content}</div>
+                `;
+            } else {
+                wrap.innerHTML = `
+                    <!-- FOTO PROFIL AI  -->
+                    <img src="${FOTO_PROFIL_AI}" class="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-cyan-500/20 shadow-lg">
+                    <div class="bubble-ai p-4 rounded-2xl rounded-tl-none text-sm chat-content shadow-xl border-white/5">${content}</div>
+                `;
+            }
+            
+            box.appendChild(wrap);
+            box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
+            return wrap.querySelector('.chat-content') || wrap;
+        }
+
+        async function gasKirim() {
+            const txt = document.getElementById('tInput').value.trim();
+            if(!txt && !curFile) return;
+
+            createBubble(true, txt || " Edit foto ini...");
+            const snapFile = curFile;
+            document.getElementById('tInput').value = "";
+            cancelImg();
+
+            const aiBubble = createBubble(false, '<span class="animate-pulse italic">Memproses...</span>');
+            
+            try {
+                if(snapFile) {
+                    const tempId = "img-" + Date.now();
+                    const downloadId = "dl-" + Date.now();
+
+                    aiBubble.innerHTML = `
+                        <p id="status-${tempId}">Sedang memproses gambar...</p>
+                        <div class="relative mt-3 rounded-xl overflow-hidden bg-slate-900 border border-white/10 shadow-inner group">
+                            <div class="scan-line"></div>
+                            <img id="${tempId}" src="${URL.createObjectURL(snapFile)}" class="opacity-40 grayscale blur-[1px] transition-all duration-500">
+                            <a id="${downloadId}" href="#" download="lumina-ai-${Date.now()}.jpg" class="btn-download absolute bottom-3 right-3 bg-cyan-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-2xl flex items-center gap-2 hover:bg-cyan-500">
+                                <span> SIMPAN KE GALERI</span>
+                            </a>
+                        </div>
+                    `;
+
+                    const fData = new FormData();
+                    fData.append('file', snapFile);
+                    fData.append('upload_preset', C_PRESET);
+
+                    const prm = `Edit: "${txt}". Berikan HANYA kode Cloudinary AI. 
+                    - Ganti Background: gen_background_replace:prompt_[deskripsi_inggris]
+                    - Ganti Objek: gen_replace:from_[objek_lama];to_[objek_baru_inggris]
+                    - Filter: e_improve atau e_vibrant
+                    Hanya kode tanpa penjelasan!`;
+
+                    const [upRes, gemRes] = await Promise.all([
+                        fetch(`https://api.cloudinary.com/v1_1/${C_NAME}/image/upload`, { method: 'POST', body: fData }),
+                        fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${G_KEY}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ contents: [{ parts: [{ text: prm }] }] })
+                        })
+                    ]);
+
+                    const upData = await upRes.json();
+                    const gemData = await gemRes.json();
+                    const code = gemData.candidates[0].content.parts[0].text.trim().replace(/[`'"]/g, "").replace(/\n/g, "");
+
+                    const finalUrl = `https://res.cloudinary.com/${C_NAME}/image/upload/f_auto,q_auto,e_${code}/${upData.public_id}`;
+                    const downloadUrl = `https://res.cloudinary.com/${C_NAME}/image/upload/fl_attachment/f_auto,q_auto,e_${code}/${upData.public_id}.jpg`;
+
+                    const finalImg = document.getElementById(tempId);
+                    const dlBtn = document.getElementById(downloadId);
+                    
+                    finalImg.onload = () => {
+                        document.getElementById(`status-${tempId}`).textContent = " Berhasil diedit!";
+                        finalImg.classList.remove('opacity-40', 'grayscale', 'blur-[1px]');
+                        if(finalImg.previousElementSibling) finalImg.previousElementSibling.remove();
+                        dlBtn.href = downloadUrl;
+                    };
+
+                    finalImg.onerror = () => {
+                        document.getElementById(`status-${tempId}`).innerHTML = " AI gagal mengedit.";
+                        finalImg.src = URL.createObjectURL(snapFile);
+                        finalImg.classList.remove('grayscale', 'blur-[1px]');
+                    };
+
+                    finalImg.src = finalUrl;
+
+                } else {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${G_KEY}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: txt }] }] })
+                    });
+                    const d = await res.json();
+                    aiBubble.innerHTML = d.candidates[0].content.parts[0].text.replace(/\n/g, "<br>");
+                }
+            } catch(e) {
+                aiBubble.innerHTML = " Maaf, sedang terjadi gangguan sistem.";
+            }
+        }
+
+        document.getElementById('tInput').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') gasKirim();
+        });
+    </script>
+</body>
+    </html>
